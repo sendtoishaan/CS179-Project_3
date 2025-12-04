@@ -72,14 +72,23 @@ def main():
             LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed."))
         
         else:
-            print("\nCalculating balance solution...")
-            SOLUTION, _ = BALANCE_SHIP(GRID)
-            
+            print("\nShip has two containers on the same side - moving one to achieve legal balance...")
+            SOLUTION, GRID = BALANCE_SHIP(GRID)
+
             if SOLUTION:
                 TOTAL_TIME = CALCULATE_BALANCE_COST(SOLUTION)
                 print(f"\nBalance solution found, it will require {len(SOLUTION)} moves/{TOTAL_TIME} minutes.")
                 LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Balance solution found, it will require {len(SOLUTION)} moves/{TOTAL_TIME} minutes."))
-            
+
+                for MOVE in SOLUTION:
+                    FROM_POS, TO_POS = MOVE
+                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(
+                        f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]"))
+
+                OUTBOUND_FILE = MANIFEST_FILE.replace(".txt", "OUTBOUND.txt")
+                WRITE_MANIFEST(OUTBOUND_FILE, GRID)
+                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop."))
+
             else:
                 print("\nNo balance solution found within constraints.")
     
@@ -91,7 +100,7 @@ def main():
     
     else:
         print("\nShip needs balancing. Calculating solution...")
-        SOLUTION, _ = BALANCE_SHIP(GRID)
+        SOLUTION, BALANCED_GRID = BALANCE_SHIP(GRID)
         
         if SOLUTION:
             TOTAL_TIME = CALCULATE_BALANCE_COST(SOLUTION)
