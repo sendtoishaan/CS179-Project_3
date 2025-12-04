@@ -129,64 +129,119 @@ def CALCULATE_BALANCE_COST(CONTAINER_MOVES):
 
 # Balances the ship by moving containers accordingly (if necessary)
 def BALANCE_SHIP(GRID):
-    TOTAL_WEIGHT = sum(CELL['weight'] for CELL in GRID.values())
-    BALANCE_THRESHOLD = TOTAL_WEIGHT * 0.10
-    
-    INITIAL_IMBALANCE = CALCULATE_BALANCE(GRID)
-    
-    if INITIAL_IMBALANCE < BALANCE_THRESHOLD:
-        return [], INITIAL_IMBALANCE
-    
-    CONTAINER_SOLVER_QUEUE = deque()
-    CONTAINER_SOLVER_QUEUE.append((GRID, [], INITIAL_IMBALANCE))
-    VISITED = set()
-    
-    BEST_SOLUTION = None
-    BEST_IMBALANCE = INITIAL_IMBALANCE
-    BEST_COST = float('inf')
-    
-    MAX_ITERATIONS = 10000
-    ITERATION_COUNT = 0
-    
-    while CONTAINER_SOLVER_QUEUE and ITERATION_COUNT < MAX_ITERATIONS:
-        ITERATION_COUNT += 1
-        CURRENT_GRID, CURRENT_MOVES, CURRENT_IMBALANCE = CONTAINER_SOLVER_QUEUE.popleft()
-        
-        GRID_STATE = tuple(sorted((POSITION, CELL['weight']) for POSITION, CELL in CURRENT_GRID.items()))
-        if GRID_STATE in VISITED:
-            continue
-        
-        VISITED.add(GRID_STATE)
-        
-        if CURRENT_IMBALANCE == 0 or CURRENT_IMBALANCE < BALANCE_THRESHOLD:
-            CURRENT_COST = CALCULATE_BALANCE_COST(CURRENT_MOVES)
+    # for case: 2 containers on same side
+    ROWS = 8
+    COLS = 12
+
+    FIRST_HALF = range(1, 7)
+    SECOND_HALF = range(7, 13)
+
+    CONTAINERS = []
+    for POSITION, CELL in GRID.items():
+        if CELL['weight'] > 0:
+            CONTAINERS.append((POSITION, CELL))
+
+    if len(CONTAINERS) == 2:
+        (ROW1, COL1), CELL1 = CONTAINERS[0]
+        (ROW2, COL2), CELL2 = CONTAINERS[1]
+
+        if (COL1 in FIRST_HALF and COL2 in FIRST_HALF) or (COL1 in SECOND_HALF and COL2 in SECOND_HALF):
+            if COL1 in FIRST_HALF:
+                COL_LOCATIONS = FIRST_HALF
+                MOVE_TARGET = SECOND_HALF
+
+            else:
+                COL_LOCATIONS = SECOND_HALF
+                MOVE_TARGET = FIRST_HALF   
+
+            BEST_MOVE = None
+            FASTEST_MOVE = float('inf')
+
+            for POSITION, CURR_CELL in CONTAINERS:
+                (CURR_ROW, CURR_COL) = POSITION
+
+                if CURR_COL in COL_LOCATIONS:
+                    for ROW in range(1, ROWS + 1):
+                        for COL in MOVE_TARGET:
+                            DESTINATION_CELL = GRID.get((ROW, COL))
+
+                            if DESTINATION_CELL and DESTINATION_CELL['type'] =='UNUSED':
+                                MOVE_DISTANCE = abs(CURR_COL - COL) 
+
+                                if MOVE_DISTANCE < FASTEST_MOVE:
+                                    FASTEST_MOVE = MOVE_DISTANCE
+                                    BEST_MOVE = (POSITION, (ROW, COL), CURR_CELL)
             
-            if CURRENT_COST < BEST_COST:
-                BEST_SOLUTION = CURRENT_MOVES
-                BEST_IMBALANCE = CURRENT_IMBALANCE
-                BEST_COST = CURRENT_COST
+            if BEST_MOVE:
+                POSITION, DESTINATION_LOCATION, CELL = BEST_MOVE
+                GRID[DESTINATION_LOCATION] = CELL
+                GRID[POSITION] = {'weight': 0, 'type': 'UNUSED', 'description': 'UNUSED'}
+
+                return [(POSITION, DESTINATION_LOCATION)], GRID
             
-            if CURRENT_IMBALANCE < BALANCE_THRESHOLD:
-                break
+            return [], GRID
+    
+    else:
+        TOTAL_WEIGHT = sum(CELL['weight'] for CELL in GRID.values())
+        BALANCE_THRESHOLD = TOTAL_WEIGHT * 0.10
+    
+        INITIAL_IMBALANCE = CALCULATE_BALANCE(GRID)
+    
+        if INITIAL_IMBALANCE < BALANCE_THRESHOLD:
+            return [], GRID
+    
+        CONTAINER_SOLVER_QUEUE = deque()
+        CONTAINER_SOLVER_QUEUE.append((GRID, [], INITIAL_IMBALANCE))
+        VISITED = set()
+    
+        BEST_SOLUTION = None
+        BEST_IMBALANCE = INITIAL_IMBALANCE
+        BEST_COST = float('inf')
+        BEST_GRID = GRID
+    
+        MAX_ITERATIONS = 10000
+        ITERATION_COUNT = 0
+    
+        while CONTAINER_SOLVER_QUEUE and ITERATION_COUNT < MAX_ITERATIONS:
+            ITERATION_COUNT += 1
+            CURRENT_GRID, CURRENT_MOVES, CURRENT_IMBALANCE = CONTAINER_SOLVER_QUEUE.popleft()
         
-        if len(CURRENT_MOVES) >= 8:
-            continue
+            GRID_STATE = tuple(sorted((POSITION, CELL['weight']) for POSITION, CELL in CURRENT_GRID.items()))
+            if GRID_STATE in VISITED:
+                continue
         
-        ACCESSIBLE_CONTAINERS = GET_CONTAINERS(CURRENT_GRID)
-        DESTINATIONS = GET_VALID_DESTINATIONS(CURRENT_GRID)
+            VISITED.add(GRID_STATE)
         
-        for START_POSITION in ACCESSIBLE_CONTAINERS:
-            FROM_COL = START_POSITION[1]
+            if CURRENT_IMBALANCE == 0 or CURRENT_IMBALANCE < BALANCE_THRESHOLD:
+                CURRENT_COST = CALCULATE_BALANCE_COST(CURRENT_MOVES)
             
-            for END_POSITION in DESTINATIONS:
-                TO_COL = END_POSITION[1]
+                if CURRENT_COST < BEST_COST:
+                    BEST_SOLUTION = CURRENT_MOVES
+                    BEST_IMBALANCE = CURRENT_IMBALANCE
+                    BEST_COST = CURRENT_COST
+                    BEST_GRID = CURRENT_GRID
+            
+                if CURRENT_IMBALANCE < BALANCE_THRESHOLD:
+                    break
+        
+            if len(CURRENT_MOVES) >= 8:
+                continue
+        
+            ACCESSIBLE_CONTAINERS = GET_CONTAINERS(CURRENT_GRID)
+            DESTINATIONS = GET_VALID_DESTINATIONS(CURRENT_GRID)
+        
+            for START_POSITION in ACCESSIBLE_CONTAINERS:
+                FROM_COL = START_POSITION[1]
+            
+                for END_POSITION in DESTINATIONS:
+                    TO_COL = END_POSITION[1]
                 
-                if (FROM_COL <= 6 and TO_COL > 6) or (FROM_COL > 6 and TO_COL <= 6):
-                    NEW_GRID = MOVE_CONTAINER(CURRENT_GRID, START_POSITION, END_POSITION)
-                    NEW_IMBALANCE = CALCULATE_BALANCE(NEW_GRID)
-                    NEW_MOVES = CURRENT_MOVES + [(START_POSITION, END_POSITION)]
+                    if (FROM_COL <= 6 and TO_COL > 6) or (FROM_COL > 6 and TO_COL <= 6):
+                        NEW_GRID = MOVE_CONTAINER(CURRENT_GRID, START_POSITION, END_POSITION)
+                        NEW_IMBALANCE = CALCULATE_BALANCE(NEW_GRID)
+                        NEW_MOVES = CURRENT_MOVES + [(START_POSITION, END_POSITION)]
                     
-                    if NEW_IMBALANCE < CURRENT_IMBALANCE:
-                        CONTAINER_SOLVER_QUEUE.append((NEW_GRID, NEW_MOVES, NEW_IMBALANCE))
+                        if NEW_IMBALANCE < CURRENT_IMBALANCE:
+                            CONTAINER_SOLVER_QUEUE.append((NEW_GRID, NEW_MOVES, NEW_IMBALANCE))
     
-    return BEST_SOLUTION, BEST_IMBALANCE
+        return BEST_SOLUTION, BEST_GRID
