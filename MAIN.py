@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from CONTAINER_SOLVER import BALANCE_SHIP, CALCULATE_BALANCE_COST
 from HELPER_FUNCTIONS import PARSE_MANIFEST_FILE, WRITE_MANIFEST, CREATE_MANFIEST_LOG_ENTRY, SAVE_LOG_FILE
+from GUI_GRID_VISUALIZATION import SHOW_BALANCE_VISUALIZATION
 
 # Main program that runs the container solver
 def main():
@@ -48,15 +49,17 @@ def main():
     print(f"Imbalance: {INITIAL_IMBALANCE} kg")
     print(f"Balance threshold (10%): {BALANCE_THRESHOLD:.2f} kg")
     
+    OUTBOUND_FILE = MANIFEST_FILE.replace(".txt", "OUTBOUND.txt")
+    SOLUTION = None
+    FINAL_GRID = GRID
+    
     if CONTAINER_COUNT == 0:
         print("\nShip is empty - already balanced!")
-        OUTBOUND_FILE = MANIFEST_FILE.replace(".txt", "OUTBOUND.txt")
         WRITE_MANIFEST(OUTBOUND_FILE, GRID)
         LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed."))
     
     elif CONTAINER_COUNT == 1:
         print("\nShip has only one container - already balanced!")
-        OUTBOUND_FILE = MANIFEST_FILE.replace(".txt", "OUTBOUND.txt")
         WRITE_MANIFEST(OUTBOUND_FILE, GRID)
         LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed."))
     
@@ -67,40 +70,54 @@ def main():
         
         if (COL1 <= 6 and COL2 > 6) or (COL1 > 6 and COL2 <= 6):
             print("\nShip has two containers on opposite sides - already balanced!")
-            OUTBOUND_FILE = MANIFEST_FILE.replace(".txt", "OUTBOUND.txt")
             WRITE_MANIFEST(OUTBOUND_FILE, GRID)
             LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed."))
         
         else:
             print("\nShip has two containers on the same side - moving one to achieve legal balance...")
-            SOLUTION, GRID = BALANCE_SHIP(GRID)
+            SOLUTION, FINAL_GRID = BALANCE_SHIP(GRID)
 
             if SOLUTION:
                 TOTAL_TIME = CALCULATE_BALANCE_COST(SOLUTION)
-                print(f"\nBalance solution found, it will require {len(SOLUTION)} moves/{TOTAL_TIME} minutes.")
+                print(f"\nBalance solution found, it will require {len(SOLUTION)} move(s)/{TOTAL_TIME} minutes.")
                 LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Balance solution found, it will require {len(SOLUTION)} moves/{TOTAL_TIME} minutes."))
 
                 for MOVE in SOLUTION:
                     FROM_POS, TO_POS = MOVE
+                    print(f"\n[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]")
                     LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(
                         f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]"))
+                    
+                    # Ask for operator comment
+                    COMMENT_INPUT = input("Add a comment? (y/n): ").strip().lower()
+                    if COMMENT_INPUT == 'y':
+                        print("Enter your comment (press Enter twice when done):")
+                        COMMENT_LINES = []
+                        while True:
+                            LINE = input()
+                            if LINE == "":
+                                break
+                            COMMENT_LINES.append(LINE)
+                        
+                        if COMMENT_LINES:
+                            FULL_COMMENT = " ".join(COMMENT_LINES)
+                            LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(FULL_COMMENT))
 
-                OUTBOUND_FILE = MANIFEST_FILE.replace(".txt", "OUTBOUND.txt")
-                WRITE_MANIFEST(OUTBOUND_FILE, GRID)
+                WRITE_MANIFEST(OUTBOUND_FILE, FINAL_GRID)
                 LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop."))
 
             else:
                 print("\nNo balance solution found within constraints.")
+                WRITE_MANIFEST(OUTBOUND_FILE, GRID)
     
     elif INITIAL_IMBALANCE < BALANCE_THRESHOLD:
         print("\nShip is already balanced!")
-        OUTBOUND_FILE = MANIFEST_FILE.replace(".txt", "OUTBOUND.txt")
         WRITE_MANIFEST(OUTBOUND_FILE, GRID)
         LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed."))
     
     else:
         print("\nShip needs balancing. Calculating solution...")
-        SOLUTION, BALANCED_GRID = BALANCE_SHIP(GRID)
+        SOLUTION, FINAL_GRID = BALANCE_SHIP(GRID)
         
         if SOLUTION:
             TOTAL_TIME = CALCULATE_BALANCE_COST(SOLUTION)
@@ -109,17 +126,41 @@ def main():
             
             for MOVE in SOLUTION:
                 FROM_POS, TO_POS = MOVE
+                print(f"\n[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]")
                 LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]"))
+                
+                # Ask for operator comment
+                COMMENT_INPUT = input("Add a comment? (y/n): ").strip().lower()
+                if COMMENT_INPUT == 'y':
+                    print("Enter your comment (press Enter twice when done):")
+                    COMMENT_LINES = []
+                    while True:
+                        LINE = input()
+                        if LINE == "":
+                            break
+                        COMMENT_LINES.append(LINE)
+                    
+                    if COMMENT_LINES:
+                        FULL_COMMENT = " ".join(COMMENT_LINES)
+                        LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(FULL_COMMENT))
+            
+            WRITE_MANIFEST(OUTBOUND_FILE, FINAL_GRID)
+            LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop."))
         
         else:
             print("\nCannot balance ship. SIFT operation required.")
             LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY("SIFT operation required - ship cannot be balanced."))
+            WRITE_MANIFEST(OUTBOUND_FILE, GRID)
     
     LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY("Program was shut down."))
     
     LOG_FILENAME = SAVE_LOG_FILE(LOG_ENTRIES, START_TIME)
     print(f"\nLog saved to: {LOG_FILENAME}")
     print("\n" + "=" * 60)
+    
+    if SOLUTION and len(SOLUTION) > 0:
+        print("\nOpening visualization window...")
+        SHOW_BALANCE_VISUALIZATION(GRID, SOLUTION, SHIP_NAME)
 
 if __name__ == "__main__":
     main()
