@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from CONTAINER_SOLVER import BALANCE_SHIP, CALCULATE_BALANCE_COST
-from HELPER_FUNCTIONS import PARSE_MANIFEST_FILE, WRITE_MANIFEST, CREATE_MANFIEST_LOG_ENTRY, SAVE_LOG_FILE
+from HELPER_FUNCTIONS import PARSE_MANIFEST_FILE, WRITE_MANIFEST, CREATE_MANFIEST_LOG_ENTRY, SAVE_LOG_FILE, CALCULATE_MOVE_TIME
 from GUI_GRID_VISUALIZATION import SHOW_BALANCE_VISUALIZATION
 
 # Main program that runs the container solver
@@ -53,6 +53,10 @@ def main():
     SOLUTION = None
     FINAL_GRID = GRID
     
+    ORIGINAL_GRID = {}
+    for pos, cell in GRID.items():
+        ORIGINAL_GRID[pos] = cell.copy()
+    
     if CONTAINER_COUNT == 0:
         print("\nShip is empty - already balanced!")
         WRITE_MANIFEST(OUTBOUND_FILE, GRID)
@@ -79,30 +83,43 @@ def main():
 
             if SOLUTION:
                 TOTAL_TIME = CALCULATE_BALANCE_COST(SOLUTION)
-                print(f"\nBalance solution found, it will require {len(SOLUTION)} move(s)/{TOTAL_TIME} minutes.")
-                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Balance solution found, it will require {len(SOLUTION)} moves/{TOTAL_TIME} minutes."))
+                TOTAL_STEPS = len(SOLUTION) * 3
+                print(f"\n... solution was found, it will take {TOTAL_TIME} minutes and {TOTAL_STEPS} moves")
+                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Balance solution found, it will require {TOTAL_STEPS} moves/{TOTAL_TIME} minutes."))
 
-                for MOVE in SOLUTION:
+                STEP_NUM = 1
+                for i, MOVE in enumerate(SOLUTION, 1):
                     FROM_POS, TO_POS = MOVE
-                    print(f"\n[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]")
-                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(
-                        f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]"))
+                    MOVE_TIME = CALCULATE_MOVE_TIME(FROM_POS, TO_POS, 
+                                                    (1, 8) if i == 1 else SOLUTION[i-2][1])
                     
-                    # Ask for operator comment
-                    COMMENT_INPUT = input("Add a comment? (y/n): ").strip().lower()
-                    if COMMENT_INPUT == 'y':
-                        print("Enter your comment (press Enter twice when done):")
-                        COMMENT_LINES = []
-                        while True:
-                            LINE = input()
-                            if LINE == "":
-                                break
-                            COMMENT_LINES.append(LINE)
-                        
-                        if COMMENT_LINES:
-                            FULL_COMMENT = " ".join(COMMENT_LINES)
-                            LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(FULL_COMMENT))
+                    print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from PARK to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes")
+                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from PARK to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes"))
+                    STEP_NUM += 1
+                    
+                    print(f"{STEP_NUM} of {TOTAL_STEPS}: Move container in [{FROM_POS[0]:02d},{FROM_POS[1]:02d}] to [{TO_POS[0]:02d},{TO_POS[1]:02d}], {MOVE_TIME[1]} minutes")
+                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]"))
+                    STEP_NUM += 1
+                    
+                    print(f"{STEP_NUM} of {TOTAL_STEPS}: Move from [{TO_POS[0]:02d},{TO_POS[1]:02d}] to PARK, {MOVE_TIME[2]} minutes")
+                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from [{TO_POS[0]:02d},{TO_POS[1]:02d}] to PARK, {MOVE_TIME[2]} minutes"))
+                    STEP_NUM += 1
+                
+                COMMENT_INPUT = input("\nAdd a comment? (y/n): ").strip().lower()
+                if COMMENT_INPUT == 'y':
+                    print("Enter your comment (press Enter twice when done):")
+                    COMMENT_LINES = []
+                    while True:
+                        LINE = input()
+                        if LINE == "":
+                            break
+                        COMMENT_LINES.append(LINE)
+                    
+                    if COMMENT_LINES:
+                        FULL_COMMENT = " ".join(COMMENT_LINES)
+                        LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(FULL_COMMENT))
 
+                print(f"\nDone! {OUTBOUND_FILE} was written to the desktop")
                 WRITE_MANIFEST(OUTBOUND_FILE, FINAL_GRID)
                 LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop."))
 
@@ -121,29 +138,43 @@ def main():
         
         if SOLUTION:
             TOTAL_TIME = CALCULATE_BALANCE_COST(SOLUTION)
-            print(f"\nBalance solution found, it will require {len(SOLUTION)} moves/{TOTAL_TIME} minutes.")
-            LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Balance solution found, it will require {len(SOLUTION)} moves/{TOTAL_TIME} minutes."))
+            TOTAL_STEPS = len(SOLUTION) * 3
+            print(f"\n... solution was found, it will take {TOTAL_TIME} minutes and {TOTAL_STEPS} moves")
+            LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Balance solution found, it will require {TOTAL_STEPS} moves/{TOTAL_TIME} minutes."))
             
-            for MOVE in SOLUTION:
+            STEP_NUM = 1
+            for i, MOVE in enumerate(SOLUTION, 1):
                 FROM_POS, TO_POS = MOVE
-                print(f"\n[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]")
-                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]"))
+                MOVE_TIME = CALCULATE_MOVE_TIME(FROM_POS, TO_POS, 
+                                                (1, 8) if i == 1 else SOLUTION[i-2][1])
                 
-                # Ask for operator comment
-                COMMENT_INPUT = input("Add a comment? (y/n): ").strip().lower()
-                if COMMENT_INPUT == 'y':
-                    print("Enter your comment (press Enter twice when done):")
-                    COMMENT_LINES = []
-                    while True:
-                        LINE = input()
-                        if LINE == "":
-                            break
-                        COMMENT_LINES.append(LINE)
-                    
-                    if COMMENT_LINES:
-                        FULL_COMMENT = " ".join(COMMENT_LINES)
-                        LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(FULL_COMMENT))
+                print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from PARK to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes")
+                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from PARK to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes"))
+                STEP_NUM += 1
+                
+                print(f"{STEP_NUM} of {TOTAL_STEPS}: Move container in [{FROM_POS[0]:02d},{FROM_POS[1]:02d}] to [{TO_POS[0]:02d},{TO_POS[1]:02d}], {MOVE_TIME[1]} minutes")
+                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]"))
+                STEP_NUM += 1
+                
+                print(f"{STEP_NUM} of {TOTAL_STEPS}: Move from [{TO_POS[0]:02d},{TO_POS[1]:02d}] to PARK, {MOVE_TIME[2]} minutes")
+                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from [{TO_POS[0]:02d},{TO_POS[1]:02d}] to PARK, {MOVE_TIME[2]} minutes"))
+                STEP_NUM += 1
             
+            COMMENT_INPUT = input("\nAdd a comment? (y/n): ").strip().lower()
+            if COMMENT_INPUT == 'y':
+                print("Enter your comment (press Enter twice when done):")
+                COMMENT_LINES = []
+                while True:
+                    LINE = input()
+                    if LINE == "":
+                        break
+                    COMMENT_LINES.append(LINE)
+                
+                if COMMENT_LINES:
+                    FULL_COMMENT = " ".join(COMMENT_LINES)
+                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(FULL_COMMENT))
+            
+            print(f"\nDone! {OUTBOUND_FILE} was written to the desktop")
             WRITE_MANIFEST(OUTBOUND_FILE, FINAL_GRID)
             LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop."))
         
@@ -160,7 +191,7 @@ def main():
     
     if SOLUTION and len(SOLUTION) > 0:
         print("\nOpening visualization window...")
-        SHOW_BALANCE_VISUALIZATION(GRID, SOLUTION, SHIP_NAME)
+        SHOW_BALANCE_VISUALIZATION(ORIGINAL_GRID, SOLUTION, SHIP_NAME)
 
 if __name__ == "__main__":
     main()
