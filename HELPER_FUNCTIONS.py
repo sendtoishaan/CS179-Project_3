@@ -89,3 +89,15 @@ def SAVE_LOG_FILE(LOG_ENTRIES, START_TIME):
             FILE.write(ENTRY + '\n')
     
     return FILENAME
+
+# Calculates the time for each step of a container move:
+def CALCULATE_MOVE_TIME(FROM_POS, TO_POS, PREV_POS):
+    PARK_POSITION = (1, 8)
+    
+    TIME_TO_SOURCE = abs(PREV_POS[0] - FROM_POS[0]) + abs(PREV_POS[1] - FROM_POS[1])
+    
+    TIME_SOURCE_TO_DEST = abs(FROM_POS[0] - TO_POS[0]) + abs(FROM_POS[1] - TO_POS[1])
+    
+    TIME_DEST_TO_PARK = abs(TO_POS[0] - PARK_POSITION[0]) + abs(TO_POS[1] - PARK_POSITION[1])
+    
+    return (TIME_TO_SOURCE, TIME_SOURCE_TO_DEST, TIME_DEST_TO_PARK)

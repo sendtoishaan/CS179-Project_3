@@ -11,6 +11,10 @@ class ShipBalanceGUI:
         self.SOLUTION      = SOLUTION
         self.CURRENT_STEP  = 0
         self.CELL_SIZE     = 60
+        self.PARK_POS      = (1, 8)
+        
+        # Create expanded step list with PARK movements
+        self.EXPANDED_STEPS = self.CREATE_EXPANDED_STEPS()
         
         self.MAIN_FRAME    = ttk.Frame(ROOT, padding="10")
         self.MAIN_FRAME.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -31,7 +35,7 @@ class ShipBalanceGUI:
         self.BALANCE_LABEL = ttk.Label(self.INFO_FRAME, text="", font=('Arial', 10))
         self.BALANCE_LABEL.grid(row=1, column=0, sticky=tk.W)
         
-        self.MOVE_LABEL = ttk.Label(self.INFO_FRAME, text="", font=('Arial', 10))
+        self.MOVE_LABEL = ttk.Label(self.INFO_FRAME, text="", font=('Arial', 10, 'bold'))
         self.MOVE_LABEL.grid(row=2, column=0, sticky=tk.W)
         
         self.BUTTON_FRAME = ttk.Frame(self.MAIN_FRAME)
@@ -49,38 +53,106 @@ class ShipBalanceGUI:
                                        command=self.RESET_VIEW)
         self.RESET_BUTTON.grid(row=0, column=2, padx=5)
         
-        self.GRID_STATES = [self.GRID.copy()]
+        # Store the initial grid separately and build all grid states
+        self.INITIAL_GRID = {}
+        for pos, cell in self.GRID.items():
+            self.INITIAL_GRID[pos] = cell.copy()
+        
+        self.GRID_STATES = []
         self.APPLY_MOVES()
         
         self.DRAW_GRID()
         self.UPDATE_INFO()
     
+    # Create expanded step list that includes PARK movements
+    def CREATE_EXPANDED_STEPS(self):
+        EXPANDED = []
+        PREV_POS = self.PARK_POS
+        
+        for i, MOVE in enumerate(self.SOLUTION, 1):
+            FROM_POS, TO_POS = MOVE
+            
+            # Calculate times
+            TIME_TO_SOURCE = abs(PREV_POS[0] - FROM_POS[0]) + abs(PREV_POS[1] - FROM_POS[1])
+            TIME_SOURCE_TO_DEST = abs(FROM_POS[0] - TO_POS[0]) + abs(FROM_POS[1] - TO_POS[1])
+            TIME_DEST_TO_PARK = abs(TO_POS[0] - self.PARK_POS[0]) + abs(TO_POS[1] - self.PARK_POS[1])
+            
+            # Step 1: PARK to source
+            EXPANDED.append({
+                'type': 'to_source',
+                'move_num': i,
+                'from': PREV_POS,
+                'to': FROM_POS,
+                'time': TIME_TO_SOURCE,
+                'description': f"{i} of {len(self.SOLUTION)}: Move from PARK to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {TIME_TO_SOURCE} minutes"
+            })
+            
+            # Step 2: source to destination
+            EXPANDED.append({
+                'type': 'move_container',
+                'move_num': i,
+                'from': FROM_POS,
+                'to': TO_POS,
+                'time': TIME_SOURCE_TO_DEST,
+                'description': f"{i} of {len(self.SOLUTION)}: Move container in [{FROM_POS[0]:02d},{FROM_POS[1]:02d}] to [{TO_POS[0]:02d},{TO_POS[1]:02d}], {TIME_SOURCE_TO_DEST} minutes"
+            })
+            
+            # Step 3: destination to PARK
+            EXPANDED.append({
+                'type': 'to_park',
+                'move_num': i,
+                'from': TO_POS,
+                'to': self.PARK_POS,
+                'time': TIME_DEST_TO_PARK,
+                'description': f"{i} of {len(self.SOLUTION)}: Move from [{TO_POS[0]:02d},{TO_POS[1]:02d}] to PARK, {TIME_DEST_TO_PARK} minutes"
+            })
+            
+            PREV_POS = self.PARK_POS
+        
+        return EXPANDED
+    
     # Apply each move to create grid states for each step
     def APPLY_MOVES(self):
-        CURRENT_GRID = self.GRID.copy()
+        # Start with the initial grid
+        CURRENT_GRID = {}
+        for pos, cell in self.INITIAL_GRID.items():
+            CURRENT_GRID[pos] = cell.copy()
         
-        for MOVE in self.SOLUTION:
-            FROM_POS, TO_POS = MOVE
-            NEW_GRID         = {}
-            
-            for POSITION in CURRENT_GRID:
-                if POSITION == FROM_POS:
-                    NEW_GRID[POSITION] = {'weight': 0, 'type': 'UNUSED', 'description': 'UNUSED'}
-                elif POSITION == TO_POS:
-                    NEW_GRID[POSITION] = {
-                        'weight': CURRENT_GRID[FROM_POS]['weight'],
-                        'type': CURRENT_GRID[TO_POS]['type'],
-                        'description': CURRENT_GRID[FROM_POS]['description']
-                    }
-                else:
-                    NEW_GRID[POSITION] = CURRENT_GRID[POSITION].copy()
-            
-            self.GRID_STATES.append(NEW_GRID)
-            CURRENT_GRID = NEW_GRID
+        # Add initial state as step 0
+        self.GRID_STATES.append(CURRENT_GRID.copy())
+        
+        for STEP in self.EXPANDED_STEPS:
+            if STEP['type'] == 'to_source':
+                # For going to source, just append the same grid state
+                self.GRID_STATES.append(CURRENT_GRID.copy())
+            elif STEP['type'] == 'move_container':
+                FROM_POS = STEP['from']
+                TO_POS = STEP['to']
+                NEW_GRID = {}
+                
+                for POSITION in CURRENT_GRID:
+                    if POSITION == FROM_POS:
+                        NEW_GRID[POSITION] = {'weight': 0, 'type': 'UNUSED', 'description': 'UNUSED'}
+                    elif POSITION == TO_POS:
+                        NEW_GRID[POSITION] = {
+                            'weight': CURRENT_GRID[FROM_POS]['weight'],
+                            'type': CURRENT_GRID[TO_POS]['type'],
+                            'description': CURRENT_GRID[FROM_POS]['description']
+                        }
+                    else:
+                        NEW_GRID[POSITION] = CURRENT_GRID[POSITION].copy()
+                
+                self.GRID_STATES.append(NEW_GRID)
+                CURRENT_GRID = NEW_GRID
+            elif STEP['type'] == 'to_park':
+                # For returning to park, just append the same grid state
+                self.GRID_STATES.append(CURRENT_GRID.copy())
     
     # Draw the ship grid on the canvas
     def DRAW_GRID(self):
         self.CANVAS.delete("all")
+        
+        # Get the grid state for the current step
         CURRENT_GRID = self.GRID_STATES[self.CURRENT_STEP]
         
         for COL in range(1, 13):
@@ -90,6 +162,19 @@ class ShipBalanceGUI:
         DIVIDER_X = 25 + 6 * self.CELL_SIZE
         self.CANVAS.create_line(DIVIDER_X, 30, DIVIDER_X, 30 + 8 * self.CELL_SIZE, 
                                 width=3, fill='red', dash=(5, 5))
+        
+        # Highlight positions based on current step
+        HIGHLIGHT_FROM = None
+        HIGHLIGHT_TO = None
+        
+        if self.CURRENT_STEP > 0 and self.CURRENT_STEP <= len(self.EXPANDED_STEPS):
+            STEP_INFO = self.EXPANDED_STEPS[self.CURRENT_STEP - 1]
+            
+            # Only highlight if the position is on the grid (not PARK)
+            if STEP_INFO['from'] != self.PARK_POS:
+                HIGHLIGHT_FROM = STEP_INFO['from']
+            if STEP_INFO['to'] != self.PARK_POS:
+                HIGHLIGHT_TO = STEP_INFO['to']
         
         for ROW in range(8, 0, -1):
             for COL in range(1, 13):
@@ -111,14 +196,14 @@ class ShipBalanceGUI:
                     OUTLINE = 'gray'
                 
                 WIDTH = 1
-                if self.CURRENT_STEP > 0 and self.CURRENT_STEP <= len(self.SOLUTION):
-                    FROM_POS, TO_POS = self.SOLUTION[self.CURRENT_STEP - 1]
-                    if (ROW, COL) == FROM_POS:
-                        OUTLINE = 'blue'
-                        WIDTH   = 3
-                    elif (ROW, COL) == TO_POS:
-                        OUTLINE = 'orange'
-                        WIDTH   = 3
+                
+                # Highlight based on step type
+                if (ROW, COL) == HIGHLIGHT_FROM:
+                    OUTLINE = 'blue'
+                    WIDTH   = 3
+                elif (ROW, COL) == HIGHLIGHT_TO:
+                    OUTLINE = 'orange'
+                    WIDTH   = 3
                 
                 self.CANVAS.create_rectangle(X, Y, X + self.CELL_SIZE, Y + self.CELL_SIZE,
                                             fill=COLOR, outline=OUTLINE, width=WIDTH)
@@ -140,6 +225,20 @@ class ShipBalanceGUI:
                     self.CANVAS.create_text(X + self.CELL_SIZE // 2, Y + self.CELL_SIZE // 2,
                                            text="NAN", font=('Arial', 8, 'bold'))
         
+        # Draw arrow showing crane movement (but not when going to/from PARK)
+        if HIGHLIGHT_FROM and HIGHLIGHT_TO and HIGHLIGHT_FROM != HIGHLIGHT_TO:
+            STEP_INFO = self.EXPANDED_STEPS[self.CURRENT_STEP - 1] if self.CURRENT_STEP > 0 else None
+            
+            # Only draw arrow if it's a container move (not to/from PARK)
+            if STEP_INFO and STEP_INFO['type'] == 'move_container':
+                X1 = 25 + (HIGHLIGHT_FROM[1] - 1) * self.CELL_SIZE + self.CELL_SIZE // 2
+                Y1 = 30 + (8 - HIGHLIGHT_FROM[0]) * self.CELL_SIZE + self.CELL_SIZE // 2
+                X2 = 25 + (HIGHLIGHT_TO[1] - 1) * self.CELL_SIZE + self.CELL_SIZE // 2
+                Y2 = 30 + (8 - HIGHLIGHT_TO[0]) * self.CELL_SIZE + self.CELL_SIZE // 2
+                
+                self.CANVAS.create_line(X1, Y1, X2, Y2, arrow=tk.LAST, width=3, 
+                                       fill='red', dash=(5, 3))
+        
         LEGEND_Y = 30 + 8 * self.CELL_SIZE + 20
         self.CANVAS.create_rectangle(25, LEGEND_Y, 45, LEGEND_Y + 15, fill='#4CAF50')
         self.CANVAS.create_text(50, LEGEND_Y + 7, text="Container", anchor=tk.W, font=('Arial', 9))
@@ -152,7 +251,7 @@ class ShipBalanceGUI:
     
     # Calculate port and starboard weights for current state
     def CALCULATE_BALANCE_INFO(self):
-        CURRENT_GRID     = self.GRID_STATES[self.CURRENT_STEP]
+        CURRENT_GRID = self.GRID_STATES[self.CURRENT_STEP]
         PORT_WEIGHT      = 0
         STARBOARD_WEIGHT = 0
         
@@ -172,25 +271,24 @@ class ShipBalanceGUI:
     def UPDATE_INFO(self):
         PORT_WEIGHT, STARBOARD_WEIGHT, IMBALANCE = self.CALCULATE_BALANCE_INFO()
         
-        self.STEP_LABEL.config(text=f"Step {self.CURRENT_STEP} of {len(self.SOLUTION)}")
+        TOTAL_STEPS = len(self.EXPANDED_STEPS)
+        self.STEP_LABEL.config(text=f"Step {self.CURRENT_STEP} of {TOTAL_STEPS}")
         self.BALANCE_LABEL.config(
             text=f"Port: {PORT_WEIGHT} kg  |  Starboard: {STARBOARD_WEIGHT} kg  |  Imbalance: {IMBALANCE} kg"
         )
         
-        if self.CURRENT_STEP > 0 and self.CURRENT_STEP <= len(self.SOLUTION):
-            FROM_POS, TO_POS = self.SOLUTION[self.CURRENT_STEP - 1]
-            self.MOVE_LABEL.config(
-                text=f"Move: [{FROM_POS[0]:02d},{FROM_POS[1]:02d}] → [{TO_POS[0]:02d},{TO_POS[1]:02d}]"
-            )
+        if self.CURRENT_STEP > 0 and self.CURRENT_STEP <= len(self.EXPANDED_STEPS):
+            STEP_INFO = self.EXPANDED_STEPS[self.CURRENT_STEP - 1]
+            self.MOVE_LABEL.config(text=STEP_INFO['description'])
         else:
-            self.MOVE_LABEL.config(text="")
+            self.MOVE_LABEL.config(text="Initial state")
         
         self.PREV_BUTTON.config(state='normal' if self.CURRENT_STEP > 0 else 'disabled')
-        self.NEXT_BUTTON.config(state='normal' if self.CURRENT_STEP < len(self.SOLUTION) else 'disabled')
+        self.NEXT_BUTTON.config(state='normal' if self.CURRENT_STEP < len(self.EXPANDED_STEPS) else 'disabled')
     
     # Move to next step in the visualization
     def NEXT_STEP(self):
-        if self.CURRENT_STEP < len(self.SOLUTION):
+        if self.CURRENT_STEP < len(self.EXPANDED_STEPS):
             self.CURRENT_STEP += 1
             self.DRAW_GRID()
             self.UPDATE_INFO()
@@ -218,20 +316,3 @@ def SHOW_BALANCE_VISUALIZATION(GRID, SOLUTION, SHIP_NAME):
     ROOT = tk.Tk()
     APP  = ShipBalanceGUI(ROOT, GRID, SOLUTION, SHIP_NAME)
     ROOT.mainloop()
-
-
-if __name__ == "__main__":
-    TEST_GRID = {}
-    for ROW in range(1, 9):
-        for COL in range(1, 13):
-            TEST_GRID[(ROW, COL)] = {'weight': 0, 'type': 'UNUSED', 'description': 'UNUSED'}
-    
-    TEST_GRID[(1, 2)]  = {'weight': 1000, 'type': 'CONTAINER', 'description': 'Container A'}
-    TEST_GRID[(1, 3)]  = {'weight': 1500, 'type': 'CONTAINER', 'description': 'Container B'}
-    TEST_GRID[(1, 10)] = {'weight': 0, 'type': 'UNUSED', 'description': 'UNUSED'}
-    
-    TEST_SOLUTION = [
-        ((1, 3), (1, 10))
-    ]
-    
-    SHOW_BALANCE_VISUALIZATION(TEST_GRID, TEST_SOLUTION, "TEST_SHIP")
