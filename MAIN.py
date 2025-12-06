@@ -53,6 +53,7 @@ def main():
     SOLUTION = None
     FINAL_GRID = GRID
     
+    # Store a deep copy of the original grid for visualization
     ORIGINAL_GRID = {}
     for pos, cell in GRID.items():
         ORIGINAL_GRID[pos] = cell.copy()
@@ -82,29 +83,37 @@ def main():
             SOLUTION, FINAL_GRID = BALANCE_SHIP(GRID)
 
             if SOLUTION:
+                # Now steps: 2 per move + 1 final return to park
                 TOTAL_TIME = CALCULATE_BALANCE_COST(SOLUTION)
-                TOTAL_STEPS = len(SOLUTION) * 3
+                TOTAL_STEPS = len(SOLUTION) * 2 + 1
                 print(f"\n... solution was found, it will take {TOTAL_TIME} minutes and {TOTAL_STEPS} moves")
                 LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Balance solution found, it will require {TOTAL_STEPS} moves/{TOTAL_TIME} minutes."))
 
                 STEP_NUM = 1
                 for i, MOVE in enumerate(SOLUTION, 1):
                     FROM_POS, TO_POS = MOVE
-                    MOVE_TIME = CALCULATE_MOVE_TIME(FROM_POS, TO_POS, 
-                                                    (1, 8) if i == 1 else SOLUTION[i-2][1])
+                    # prev position (for time to source) is park for first move, otherwise previous move destination
+                    PREV_POS = (1, 8) if i == 1 else SOLUTION[i-2][1]
+                    MOVE_TIME = CALCULATE_MOVE_TIME(FROM_POS, TO_POS, PREV_POS)
                     
-                    print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from PARK to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes")
-                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from PARK to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes"))
+                    # Step: move from PARK or previous pos to source
+                    print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from {'PARK' if PREV_POS == (1,8) else f'[{PREV_POS[0]:02d},{PREV_POS[1]:02d}]'} to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes")
+                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from {'PARK' if PREV_POS == (1,8) else f'[{PREV_POS[0]:02d},{PREV_POS[1]:02d}]'} to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes"))
                     STEP_NUM += 1
                     
+                    # Step: move container from source to destination
                     print(f"{STEP_NUM} of {TOTAL_STEPS}: Move container in [{FROM_POS[0]:02d},{FROM_POS[1]:02d}] to [{TO_POS[0]:02d},{TO_POS[1]:02d}], {MOVE_TIME[1]} minutes")
                     LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]"))
                     STEP_NUM += 1
-                    
-                    print(f"{STEP_NUM} of {TOTAL_STEPS}: Move from [{TO_POS[0]:02d},{TO_POS[1]:02d}] to PARK, {MOVE_TIME[2]} minutes")
-                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from [{TO_POS[0]:02d},{TO_POS[1]:02d}] to PARK, {MOVE_TIME[2]} minutes"))
-                    STEP_NUM += 1
                 
+                # Final return to PARK (only once)
+                LAST_DEST = SOLUTION[-1][1]
+                # compute time directly (or reuse last MOVE_TIME[2])
+                TIME_TO_PARK = abs(LAST_DEST[0] - 1) + abs(LAST_DEST[1] - 8)
+                print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from [{LAST_DEST[0]:02d},{LAST_DEST[1]:02d}] to PARK, {TIME_TO_PARK} minutes")
+                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from [{LAST_DEST[0]:02d},{LAST_DEST[1]:02d}] to PARK, {TIME_TO_PARK} minutes"))
+                
+                # Ask for operator comment after all moves are shown
                 COMMENT_INPUT = input("\nAdd a comment? (y/n): ").strip().lower()
                 if COMMENT_INPUT == 'y':
                     print("Enter your comment (press Enter twice when done):")
@@ -138,28 +147,31 @@ def main():
         
         if SOLUTION:
             TOTAL_TIME = CALCULATE_BALANCE_COST(SOLUTION)
-            TOTAL_STEPS = len(SOLUTION) * 3
+            TOTAL_STEPS = len(SOLUTION) * 2 + 1  # two steps per move + final return to park
             print(f"\n... solution was found, it will take {TOTAL_TIME} minutes and {TOTAL_STEPS} moves")
             LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Balance solution found, it will require {TOTAL_STEPS} moves/{TOTAL_TIME} minutes."))
             
             STEP_NUM = 1
             for i, MOVE in enumerate(SOLUTION, 1):
                 FROM_POS, TO_POS = MOVE
-                MOVE_TIME = CALCULATE_MOVE_TIME(FROM_POS, TO_POS, 
-                                                (1, 8) if i == 1 else SOLUTION[i-2][1])
+                PREV_POS = (1, 8) if i == 1 else SOLUTION[i-2][1]
+                MOVE_TIME = CALCULATE_MOVE_TIME(FROM_POS, TO_POS, PREV_POS)
                 
-                print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from PARK to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes")
-                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from PARK to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes"))
+                print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from {'PARK' if PREV_POS == (1,8) else f'[{PREV_POS[0]:02d},{PREV_POS[1]:02d}]'} to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes")
+                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from {'PARK' if PREV_POS == (1,8) else f'[{PREV_POS[0]:02d},{PREV_POS[1]:02d}]'} to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes"))
                 STEP_NUM += 1
                 
                 print(f"{STEP_NUM} of {TOTAL_STEPS}: Move container in [{FROM_POS[0]:02d},{FROM_POS[1]:02d}] to [{TO_POS[0]:02d},{TO_POS[1]:02d}], {MOVE_TIME[1]} minutes")
                 LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]"))
                 STEP_NUM += 1
-                
-                print(f"{STEP_NUM} of {TOTAL_STEPS}: Move from [{TO_POS[0]:02d},{TO_POS[1]:02d}] to PARK, {MOVE_TIME[2]} minutes")
-                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from [{TO_POS[0]:02d},{TO_POS[1]:02d}] to PARK, {MOVE_TIME[2]} minutes"))
-                STEP_NUM += 1
             
+            # Final single return to PARK
+            LAST_DEST = SOLUTION[-1][1]
+            TIME_TO_PARK = abs(LAST_DEST[0] - 1) + abs(LAST_DEST[1] - 8)
+            print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from [{LAST_DEST[0]:02d},{LAST_DEST[1]:02d}] to PARK, {TIME_TO_PARK} minutes")
+            LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from [{LAST_DEST[0]:02d},{LAST_DEST[1]:02d}] to PARK, {TIME_TO_PARK} minutes"))
+            
+            # Ask for operator comment after all moves are shown
             COMMENT_INPUT = input("\nAdd a comment? (y/n): ").strip().lower()
             if COMMENT_INPUT == 'y':
                 print("Enter your comment (press Enter twice when done):")
@@ -185,7 +197,7 @@ def main():
     
     LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY("Program was shut down."))
     
-    LOG_FILENAME = SAVE_LOG_FILE(LOG_ENTRIES, START_TIME)
+    LOG_FILENAME = SAVE_LOG_FILE(LOG_ENTRIES, START_TIME, MANIFEST_FILE=MANIFEST_FILE)
     print(f"\nLog saved to: {LOG_FILENAME}")
     print("\n" + "=" * 60)
     

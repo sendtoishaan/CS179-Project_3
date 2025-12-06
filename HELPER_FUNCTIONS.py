@@ -78,10 +78,16 @@ def CREATE_MANFIEST_LOG_ENTRY(MESSAGE):
     return f"{TIMESTAMP} {MESSAGE}"
 
 # Saves the log file in the correct format and naming convention
-def SAVE_LOG_FILE(LOG_ENTRIES, START_TIME):
+def SAVE_LOG_FILE(LOG_ENTRIES, START_TIME, MANIFEST_FILE=None):
     DESKTOP = os.path.join(os.path.expanduser('~'), 'Desktop')
     TIMESTAMP = START_TIME.strftime("%m_%d_%Y_%H%M")
-    FILENAME = f"KeoghsPort{TIMESTAMP}.txt"
+    
+    if MANIFEST_FILE:
+        BASE_NAME = os.path.splitext(os.path.basename(MANIFEST_FILE))[0]
+    else:
+        BASE_NAME = "KeoghsPort"
+    
+    FILENAME = f"{BASE_NAME}{TIMESTAMP}.txt"
     FULL_PATH = os.path.join(DESKTOP, FILENAME)
     
     with open(FULL_PATH, 'w') as FILE:
