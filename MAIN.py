@@ -1,30 +1,34 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from CONTAINER_SOLVER import BALANCE_SHIP, CALCULATE_BALANCE_COST
-from HELPER_FUNCTIONS import PARSE_MANIFEST_FILE, WRITE_MANIFEST, CREATE_MANFIEST_LOG_ENTRY, SAVE_LOG_FILE, CALCULATE_MOVE_TIME
+from HELPER_FUNCTIONS import PARSE_MANIFEST_FILE, WRITE_MANIFEST, CREATE_MANIFEST_LOG_ENTRY, SAVE_LOG_FILE, CALCULATE_MOVE_TIME
 from GUI_GRID_VISUALIZATION import SHOW_BALANCE_VISUALIZATION
 
 # Main program that runs the container solver
 def main():
     LOG_ENTRIES = []
     START_TIME = datetime.now()
+    SIMULATED_TIME = START_TIME
     
     print("=" * 60)
     print("KEOGH'S PORT - SHIP BALANCING SYSTEM")
     print("=" * 60)
     
+    LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY("Program was started.", SIMULATED_TIME))
     MANIFEST_FILE = input("\nEnter manifest filename: ").strip()
     
     if not os.path.exists(MANIFEST_FILE):
         print(f"ERROR: File {MANIFEST_FILE} not found!")
+        LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"ERROR: File {MANIFEST_FILE} not found. Program terminated.", SIMULATED_TIME))
+        LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY("Program was shut down.", SIMULATED_TIME))
+        LOG_FILENAME = SAVE_LOG_FILE(LOG_ENTRIES, START_TIME, MANIFEST_FILE=MANIFEST_FILE)
+        print(f"\nLog saved to: {LOG_FILENAME}")
         return
-    
-    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY("Program was started."))
     
     SHIP_NAME = MANIFEST_FILE.replace(".txt", "").replace("OUTBOUND", "")
     GRID, CONTAINER_COUNT = PARSE_MANIFEST_FILE(MANIFEST_FILE)
     
-    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Manifest {MANIFEST_FILE} is opened, there are {CONTAINER_COUNT} containers on the ship."))
+    LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Manifest {MANIFEST_FILE} is opened, there are {CONTAINER_COUNT} containers on the ship.", SIMULATED_TIME))
     
     INITIAL_PORT_WEIGHT = 0
     INITIAL_STARBOARD_WEIGHT = 0
@@ -61,12 +65,14 @@ def main():
     if CONTAINER_COUNT == 0:
         print("\nShip is empty - already balanced!")
         WRITE_MANIFEST(OUTBOUND_FILE, GRID)
-        LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed."))
+        SIMULATED_TIME += timedelta(minutes=1)
+        LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed.", SIMULATED_TIME))
     
     elif CONTAINER_COUNT == 1:
         print("\nShip has only one container - already balanced!")
         WRITE_MANIFEST(OUTBOUND_FILE, GRID)
-        LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed."))
+        SIMULATED_TIME += timedelta(minutes=1)
+        LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed.", SIMULATED_TIME))
     
     elif CONTAINER_COUNT == 2:
         CONTAINERS = [(POS, CELL) for POS, CELL in GRID.items() if CELL['weight'] > 0]
@@ -76,7 +82,7 @@ def main():
         if (COL1 <= 6 and COL2 > 6) or (COL1 > 6 and COL2 <= 6):
             print("\nShip has two containers on opposite sides - already balanced!")
             WRITE_MANIFEST(OUTBOUND_FILE, GRID)
-            LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed."))
+            LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed.", SIMULATED_TIME))
         
         else:
             print("\nShip has two containers on the same side - moving one to achieve legal balance...")
@@ -86,8 +92,9 @@ def main():
                 # Now steps: 2 per move + 1 final return to park
                 TOTAL_TIME = CALCULATE_BALANCE_COST(SOLUTION)
                 TOTAL_STEPS = len(SOLUTION) * 2 + 1
+                SIMULATED_TIME += timedelta(minutes=1)
                 print(f"\n... solution was found, it will take {TOTAL_TIME} minutes and {TOTAL_STEPS} moves")
-                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Balance solution found, it will require {TOTAL_STEPS} moves/{TOTAL_TIME} minutes."))
+                LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Balance solution found, it will require {TOTAL_STEPS} moves/{TOTAL_TIME} minutes.", SIMULATED_TIME))
 
                 STEP_NUM = 1
                 for i, MOVE in enumerate(SOLUTION, 1):
@@ -97,21 +104,25 @@ def main():
                     MOVE_TIME = CALCULATE_MOVE_TIME(FROM_POS, TO_POS, PREV_POS)
                     
                     # Step: move from PARK or previous pos to source
+                    SIMULATED_TIME += timedelta(minutes=MOVE_TIME[0])
                     print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from {'PARK' if PREV_POS == (1,8) else f'[{PREV_POS[0]:02d},{PREV_POS[1]:02d}]'} to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes")
-                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from {'PARK' if PREV_POS == (1,8) else f'[{PREV_POS[0]:02d},{PREV_POS[1]:02d}]'} to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes"))
+                    LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Move from {'PARK' if PREV_POS == (1,8) else f'[{PREV_POS[0]:02d},{PREV_POS[1]:02d}]'} to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes", SIMULATED_TIME))
                     STEP_NUM += 1
                     
                     # Step: move container from source to destination
+                    SIMULATED_TIME += timedelta(minutes=MOVE_TIME[1])
                     print(f"{STEP_NUM} of {TOTAL_STEPS}: Move container in [{FROM_POS[0]:02d},{FROM_POS[1]:02d}] to [{TO_POS[0]:02d},{TO_POS[1]:02d}], {MOVE_TIME[1]} minutes")
-                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]"))
+                    LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]", SIMULATED_TIME))
                     STEP_NUM += 1
                 
                 # Final return to PARK (only once)
                 LAST_DEST = SOLUTION[-1][1]
                 # compute time directly (or reuse last MOVE_TIME[2])
                 TIME_TO_PARK = abs(LAST_DEST[0] - 1) + abs(LAST_DEST[1] - 8)
+                SIMULATED_TIME += timedelta(minutes=TIME_TO_PARK)
+
                 print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from [{LAST_DEST[0]:02d},{LAST_DEST[1]:02d}] to PARK, {TIME_TO_PARK} minutes")
-                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from [{LAST_DEST[0]:02d},{LAST_DEST[1]:02d}] to PARK, {TIME_TO_PARK} minutes"))
+                LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Move from [{LAST_DEST[0]:02d},{LAST_DEST[1]:02d}] to PARK, {TIME_TO_PARK} minutes", SIMULATED_TIME))
                 
                 # Ask for operator comment after all moves are shown
                 COMMENT_INPUT = input("\nAdd a comment? (y/n): ").strip().lower()
@@ -126,11 +137,13 @@ def main():
                     
                     if COMMENT_LINES:
                         FULL_COMMENT = " ".join(COMMENT_LINES)
-                        LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(FULL_COMMENT))
+                        SIMULATED_TIME += timedelta(minutes=1)
+                        LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(FULL_COMMENT, SIMULATED_TIME))
 
                 print(f"\nDone! {OUTBOUND_FILE} was written to the desktop")
                 WRITE_MANIFEST(OUTBOUND_FILE, FINAL_GRID)
-                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop."))
+                SIMULATED_TIME += timedelta(minutes=1)
+                LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop.", SIMULATED_TIME))
 
             else:
                 print("\nNo balance solution found within constraints.")
@@ -139,7 +152,7 @@ def main():
     elif INITIAL_IMBALANCE < BALANCE_THRESHOLD:
         print("\nShip is already balanced!")
         WRITE_MANIFEST(OUTBOUND_FILE, GRID)
-        LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed."))
+        LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop, and a reminder pop-up to operator to send file was displayed.", SIMULATED_TIME))
     
     else:
         print("\nShip needs balancing. Calculating solution...")
@@ -148,28 +161,32 @@ def main():
         if SOLUTION:
             TOTAL_TIME = CALCULATE_BALANCE_COST(SOLUTION)
             TOTAL_STEPS = len(SOLUTION) * 2 + 1  # two steps per move + final return to park
+            SIMULATED_TIME += timedelta(minutes=1)
             print(f"\n... solution was found, it will take {TOTAL_TIME} minutes and {TOTAL_STEPS} moves")
-            LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Balance solution found, it will require {TOTAL_STEPS} moves/{TOTAL_TIME} minutes."))
+            LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Balance solution found, it will require {TOTAL_STEPS} moves/{TOTAL_TIME} minutes.", SIMULATED_TIME))
             
             STEP_NUM = 1
             for i, MOVE in enumerate(SOLUTION, 1):
                 FROM_POS, TO_POS = MOVE
                 PREV_POS = (1, 8) if i == 1 else SOLUTION[i-2][1]
                 MOVE_TIME = CALCULATE_MOVE_TIME(FROM_POS, TO_POS, PREV_POS)
-                
+
+                SIMULATED_TIME += timedelta(minutes=MOVE_TIME[0])
                 print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from {'PARK' if PREV_POS == (1,8) else f'[{PREV_POS[0]:02d},{PREV_POS[1]:02d}]'} to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes")
-                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from {'PARK' if PREV_POS == (1,8) else f'[{PREV_POS[0]:02d},{PREV_POS[1]:02d}]'} to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes"))
+                LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Move from {'PARK' if PREV_POS == (1,8) else f'[{PREV_POS[0]:02d},{PREV_POS[1]:02d}]'} to [{FROM_POS[0]:02d},{FROM_POS[1]:02d}], {MOVE_TIME[0]} minutes", SIMULATED_TIME))
                 STEP_NUM += 1
                 
+                SIMULATED_TIME += timedelta(minutes=MOVE_TIME[1])
                 print(f"{STEP_NUM} of {TOTAL_STEPS}: Move container in [{FROM_POS[0]:02d},{FROM_POS[1]:02d}] to [{TO_POS[0]:02d},{TO_POS[1]:02d}], {MOVE_TIME[1]} minutes")
-                LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]"))
+                LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}], {MOVE_TIME[1]} minutes", SIMULATED_TIME))
                 STEP_NUM += 1
             
             # Final single return to PARK
             LAST_DEST = SOLUTION[-1][1]
             TIME_TO_PARK = abs(LAST_DEST[0] - 1) + abs(LAST_DEST[1] - 8)
+            SIMULATED_TIME += timedelta(minutes=TIME_TO_PARK)
             print(f"\n{STEP_NUM} of {TOTAL_STEPS}: Move from [{LAST_DEST[0]:02d},{LAST_DEST[1]:02d}] to PARK, {TIME_TO_PARK} minutes")
-            LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Move from [{LAST_DEST[0]:02d},{LAST_DEST[1]:02d}] to PARK, {TIME_TO_PARK} minutes"))
+            LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Move from [{LAST_DEST[0]:02d},{LAST_DEST[1]:02d}] to PARK, {TIME_TO_PARK} minutes", SIMULATED_TIME))
             
             # Ask for operator comment after all moves are shown
             COMMENT_INPUT = input("\nAdd a comment? (y/n): ").strip().lower()
@@ -184,18 +201,20 @@ def main():
                 
                 if COMMENT_LINES:
                     FULL_COMMENT = " ".join(COMMENT_LINES)
-                    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(FULL_COMMENT))
+                    SIMULATED_TIME += timedelta(minutes=1)
+                    LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(FULL_COMMENT, SIMULATED_TIME))
             
             print(f"\nDone! {OUTBOUND_FILE} was written to the desktop")
             WRITE_MANIFEST(OUTBOUND_FILE, FINAL_GRID)
-            LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop."))
+            SIMULATED_TIME += timedelta(minutes=1)
+            LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop.", SIMULATED_TIME))
         
         else:
             print("\nCannot balance ship. SIFT operation required.")
-            LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY("SIFT operation required - ship cannot be balanced."))
+            LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY("SIFT operation required - ship cannot be balanced.", SIMULATED_TIME))
             WRITE_MANIFEST(OUTBOUND_FILE, GRID)
     
-    LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY("Program was shut down."))
+    LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY("Program was shut down.", SIMULATED_TIME))
     
     LOG_FILENAME = SAVE_LOG_FILE(LOG_ENTRIES, START_TIME, MANIFEST_FILE=MANIFEST_FILE)
     print(f"\nLog saved to: {LOG_FILENAME}")

@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Analyzes and extracts information from the manifest file
 def PARSE_MANIFEST_FILE(FILENAME):
@@ -73,8 +73,8 @@ def WRITE_MANIFEST(FILENAME, GRID):
                     FILE.write(f"[{ROW:02d},{COL:02d}], {{{WEIGHT:05d}}}, {DESC}\n")
 
 # Creates the date stamp for each log entry
-def CREATE_MANFIEST_LOG_ENTRY(MESSAGE):
-    TIMESTAMP = datetime.now().strftime("%m %d %Y: %H:%M")
+def CREATE_MANIFEST_LOG_ENTRY(MESSAGE, CURRENT_TIME):
+    TIMESTAMP = CURRENT_TIME.strftime("%m %d %Y: %H:%M")
     return f"{TIMESTAMP} {MESSAGE}"
 
 # Saves the log file in the correct format and naming convention
