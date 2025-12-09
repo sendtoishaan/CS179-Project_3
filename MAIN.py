@@ -112,7 +112,7 @@ def main():
                     # Step: move container from source to destination
                     SIMULATED_TIME += timedelta(minutes=MOVE_TIME[1])
                     print(f"{STEP_NUM} of {TOTAL_STEPS}: Move container in [{FROM_POS[0]:02d},{FROM_POS[1]:02d}] to [{TO_POS[0]:02d},{TO_POS[1]:02d}], {MOVE_TIME[1]} minutes")
-                    LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}]", SIMULATED_TIME))
+                    LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"[{FROM_POS[0]:02d},{FROM_POS[1]:02d}] was moved to [{TO_POS[0]:02d},{TO_POS[1]:02d}], {MOVE_TIME[1]} minutes", SIMULATED_TIME))
                     STEP_NUM += 1
                 
                 # Final return to PARK (only once)
