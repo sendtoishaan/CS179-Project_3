@@ -3,7 +3,7 @@ from datetime import datetime
 from CONTAINER_SOLVER import BALANCE_SHIP, CALCULATE_BALANCE_COST
 from HELPER_FUNCTIONS import PARSE_MANIFEST_FILE, WRITE_MANIFEST, CREATE_MANFIEST_LOG_ENTRY, SAVE_LOG_FILE, CALCULATE_MOVE_TIME
 from GUI_GRID_VISUALIZATION import SHOW_BALANCE_VISUALIZATION
-
+import time
 # Main program that runs the container solver
 def main():
     LOG_ENTRIES = []
@@ -143,8 +143,10 @@ def main():
     
     else:
         print("\nShip needs balancing. Calculating solution...")
+        start_time = time.time()
         SOLUTION, FINAL_GRID = BALANCE_SHIP(GRID)
-        
+        end_time = time.time()
+        calculation_time = end_time - start_time
         if SOLUTION:
             TOTAL_TIME = CALCULATE_BALANCE_COST(SOLUTION)
             TOTAL_STEPS = len(SOLUTION) * 2 + 1  # two steps per move + final return to park
@@ -187,6 +189,7 @@ def main():
                     LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(FULL_COMMENT))
             
             print(f"\nDone! {OUTBOUND_FILE} was written to the desktop")
+            print(f">>> Calculation completed in {calculation_time:.3f} seconds <<<")  # TESTING
             WRITE_MANIFEST(OUTBOUND_FILE, FINAL_GRID)
             LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop."))
         
@@ -194,6 +197,7 @@ def main():
             print("\nCannot balance ship. SIFT operation required.")
             LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY("SIFT operation required - ship cannot be balanced."))
             WRITE_MANIFEST(OUTBOUND_FILE, GRID)
+            print(f">>> Calculation completed in {calculation_time:.3f} seconds <<<")  # TESTING
     
     LOG_ENTRIES.append(CREATE_MANFIEST_LOG_ENTRY("Program was shut down."))
     
