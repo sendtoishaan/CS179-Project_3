@@ -6,7 +6,7 @@ Description: Given different types of starting positions(states) for crates on a
 
 Programming Language: Python
 
-Comes with __(.txt) test case files.
+Comes with 7 (.txt) test case files.
 
 Libraries/External Tools Used:
 
