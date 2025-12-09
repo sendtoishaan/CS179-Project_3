@@ -304,7 +304,7 @@ class ShipBalanceGUI:
 # Create and show the GUI visualization window
 def SHOW_BALANCE_VISUALIZATION(GRID, SOLUTION, SHIP_NAME):
     if not SOLUTION:
-        print("No moves to visualize - ship is already balanced or requires SIFT.")
+        print("No moves to visualize - ship is already balanced.")
         return
     
     ROOT = tk.Tk()

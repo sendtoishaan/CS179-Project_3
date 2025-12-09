@@ -210,8 +210,8 @@ def main():
             LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY(f"Finished a Cycle. Manifest {OUTBOUND_FILE} was written to desktop.", SIMULATED_TIME))
         
         else:
-            print("\nCannot balance ship. SIFT operation required.")
-            LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY("SIFT operation required - ship cannot be balanced.", SIMULATED_TIME))
+            print("\nCannot balance ship.")
+            LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY("Ship cannot be balanced.", SIMULATED_TIME))
             WRITE_MANIFEST(OUTBOUND_FILE, GRID)
     
     LOG_ENTRIES.append(CREATE_MANIFEST_LOG_ENTRY("Program was shut down.", SIMULATED_TIME))
